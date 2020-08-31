@@ -184,6 +184,10 @@ func applyPodPresetsOnContainer(ctr *corev1.Container, podPresets []*operatorv1a
 
 	envFrom, _ := mergeEnvFrom(ctr.EnvFrom, podPresets)
 	ctr.EnvFrom = envFrom
+
+	if ctr.Resources.Limits != nil {
+		ctr.Resources.Limits = nil
+	}
 }
 
 // filterPodPresets returns list of PodPresets which match given Pod.
