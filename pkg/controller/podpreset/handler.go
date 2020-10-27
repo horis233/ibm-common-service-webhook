@@ -23,6 +23,7 @@ import (
 	"net/http"
 	"reflect"
 	"strings"
+	"regexp"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -152,6 +153,17 @@ func applyPodPresetsOnPod(pod *corev1.Pod, podPresets []*operatorv1alpha1.PodPre
 		}
 	}
 
+	for i, ictr := range pod.Spec.InitContainers {
+		reg, _ := regexp.Compile(`^quay.io\/opencloudio(.*)$`)
+		if reg.MatchString(ictr.Image) {
+			originalImage := ictr.Image
+			imagelist := strings.Split(ictr.Image, "/")
+			ictr.Image = "hyc-cloud-private-daily-docker-local.artifactory.swg-devops.com/ibmcom/"+strings.Join(imagelist[2:],"/")
+			klog.Infof("Mirror image from %s to %s", originalImage, ictr.Image)
+		}
+		pod.Spec.InitContainers[i] = ictr
+	}
+
 	for i, ctr := range pod.Spec.Containers {
 		applyPodPresetsOnContainer(&ctr, podPresets)
 		pod.Spec.Containers[i] = ctr
@@ -184,6 +196,16 @@ func applyPodPresetsOnContainer(ctr *corev1.Container, podPresets []*operatorv1a
 
 	envFrom, _ := mergeEnvFrom(ctr.EnvFrom, podPresets)
 	ctr.EnvFrom = envFrom
+
+	reg, _ := regexp.Compile(`^quay.io\/opencloudio(.*)$`)
+
+	if reg.MatchString(ctr.Image) {
+		originalImage := ctr.Image
+		imagelist := strings.Split(ctr.Image, "/")
+		ctr.Image = "hyc-cloud-private-daily-docker-local.artifactory.swg-devops.com/ibmcom/"+strings.Join(imagelist[2:],"/")
+		klog.Infof("Mirror image from %s to %s", originalImage, ctr.Image)
+	}
+	
 }
 
 // filterPodPresets returns list of PodPresets which match given Pod.
